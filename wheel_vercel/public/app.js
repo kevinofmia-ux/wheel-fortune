@@ -9,6 +9,7 @@ tg.expand()
 // ---- 5 segments VISUELS égaux ----
 // Index 0-3 = prizes actifs côté serveur / Index 4 = déco seulement
 const PRIZES = [
+  { id: 'photo_lingerie',   emoji: '📸', line1: 'Photo',       line2: 'Lingerie',    color: '#e91e8c', dark: '#b01568' },
   { id: 'lingerie',         emoji: '👙', line1: 'Lot',         line2: 'Lingerie',    color: '#c0187a', dark: '#8e1259' },
   { id: 'free_spin',        emoji: '🎡', line1: 'Tour',        line2: 'Gratuit',     color: '#1a6eb5', dark: '#14518a' },
   { id: 'lingerie_topless', emoji: '🔥', line1: 'Pack',        line2: 'Topless',     color: '#c75000', dark: '#963c00' },
@@ -16,8 +17,8 @@ const PRIZES = [
   { id: 'solo_video',       emoji: '🎬', line1: 'Vidéo',       line2: 'Solo',        color: '#148a70', dark: '#0d6652' },
 ]
 
-const N   = PRIZES.length           // 5
-const SEG = (2 * Math.PI) / N      // 72° chacun
+const N   = PRIZES.length           // 6
+const SEG = (2 * Math.PI) / N      // 60° chacun
 
 // ---- Canvas haute résolution ----
 const canvas = document.getElementById('wheelCanvas')
