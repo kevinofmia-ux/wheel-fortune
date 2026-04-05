@@ -6,147 +6,146 @@ const tg = window.Telegram.WebApp
 tg.ready()
 tg.expand()
 
-// ---- Prizes — visuellement égaux, proba côté serveur ----
+// ---- 5 segments VISUELS égaux ----
+// Index 0-3 = prizes actifs côté serveur / Index 4 = déco seulement
 const PRIZES = [
-  { id: 'lose',             emoji: '😔', name: 'Perdu',             color: '#c0392b', dark: '#922b21' },
-  { id: 'lingerie',         emoji: '👙', name: 'Lingerie',           color: '#c0187a', dark: '#96125f' },
-  { id: 'free_spin',        emoji: '🎡', name: 'Tour Gratuit',       color: '#2471a3', dark: '#1a5276' },
-  { id: 'lingerie_topless', emoji: '🔥', name: 'Lingerie+Topless',   color: '#d35400', dark: '#a04000' },
-  { id: 'full_pack',        emoji: '💎', name: 'Pack Complet',       color: '#7d3c98', dark: '#6c3483' },
-  { id: 'solo_video',       emoji: '🎬', name: 'Vidéo Solo',         color: '#117a65', dark: '#0e6655' },
+  { id: 'lingerie',         emoji: '👙', line1: 'Lot',         line2: 'Lingerie',    color: '#c0187a', dark: '#8e1259' },
+  { id: 'free_spin',        emoji: '🎡', line1: 'Tour',        line2: 'Gratuit',     color: '#1a6eb5', dark: '#14518a' },
+  { id: 'lingerie_topless', emoji: '🔥', line1: 'Pack',        line2: 'Topless',     color: '#c75000', dark: '#963c00' },
+  { id: 'full_pack',        emoji: '💎', line1: 'Pack',        line2: 'Complet',     color: '#7d3c98', dark: '#5b2c72' },
+  { id: 'solo_video',       emoji: '🎬', line1: 'Vidéo',       line2: 'Solo',        color: '#148a70', dark: '#0d6652' },
 ]
 
-// Segments égaux visuellement
-const N = PRIZES.length
-const SEG = (2 * Math.PI) / N   // 60° chacun
+const N   = PRIZES.length           // 5
+const SEG = (2 * Math.PI) / N      // 72° chacun
 
-// ---- Canvas ----
+// ---- Canvas haute résolution ----
 const canvas = document.getElementById('wheelCanvas')
 const ctx    = canvas.getContext('2d')
-const SIZE   = canvas.width
-const CX     = SIZE / 2
-const CY     = SIZE / 2
-const R      = SIZE / 2 - 8
-const R_TEXT = R * 0.72
+const DISPLAY_SIZE = 300
+const DPR    = window.devicePixelRatio || 1
 
-let rotation = -Math.PI / 2 - SEG / 2  // premier segment centré en haut
+canvas.width        = DISPLAY_SIZE * DPR
+canvas.height       = DISPLAY_SIZE * DPR
+canvas.style.width  = DISPLAY_SIZE + 'px'
+canvas.style.height = DISPLAY_SIZE + 'px'
+ctx.scale(DPR, DPR)
+
+const CX = DISPLAY_SIZE / 2
+const CY = DISPLAY_SIZE / 2
+const R  = DISPLAY_SIZE / 2 - 8
+
+let rotation = -Math.PI / 2 - SEG / 2
 let spinning = false
 
-// ---- Draw ----
+// ---- Dessin de la roue ----
 function drawWheel(rot) {
-  ctx.clearRect(0, 0, SIZE, SIZE)
+  ctx.clearRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
 
-  // Ombre externe
+  // Ombre
   ctx.save()
-  ctx.shadowColor = 'rgba(0,0,0,0.5)'
-  ctx.shadowBlur  = 20
+  ctx.shadowColor = 'rgba(0,0,0,0.6)'
+  ctx.shadowBlur  = 24
   ctx.beginPath()
   ctx.arc(CX, CY, R + 6, 0, 2 * Math.PI)
   ctx.fillStyle = '#f1c40f'
   ctx.fill()
   ctx.restore()
 
-  // Segments
   PRIZES.forEach((p, i) => {
-    const a0 = rot + i * SEG
-    const a1 = a0 + SEG
+    const a0  = rot + i * SEG
+    const a1  = a0 + SEG
+    const mid = a0 + SEG / 2
 
-    // Segment principal
+    // Segment dégradé
+    const grd = ctx.createRadialGradient(CX, CY, R * 0.15, CX, CY, R)
+    grd.addColorStop(0, p.color)
+    grd.addColorStop(1, p.dark)
+
     ctx.beginPath()
     ctx.moveTo(CX, CY)
     ctx.arc(CX, CY, R, a0, a1)
     ctx.closePath()
-
-    // Dégradé radial
-    const grad = ctx.createRadialGradient(CX, CY, R * 0.2, CX, CY, R)
-    grad.addColorStop(0, p.color)
-    grad.addColorStop(1, p.dark)
-    ctx.fillStyle = grad
+    ctx.fillStyle = grd
     ctx.fill()
 
-    // Séparateur
-    ctx.strokeStyle = 'rgba(255,255,255,0.6)'
+    // Séparateur blanc
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'
     ctx.lineWidth   = 2
     ctx.stroke()
 
-    // Texte & emoji
-    const mid = rot + i * SEG + SEG / 2
-    const ex  = CX + R_TEXT * Math.cos(mid)
-    const ey  = CY + R_TEXT * Math.sin(mid)
+    // Texte
+    const tr = R * 0.68
+    const tx = CX + tr * Math.cos(mid)
+    const ty = CY + tr * Math.sin(mid)
 
     ctx.save()
-    ctx.translate(ex, ey)
+    ctx.translate(tx, ty)
     ctx.rotate(mid + Math.PI / 2)
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'middle'
 
     // Emoji
-    ctx.font = '20px Arial'
-    ctx.fillText(p.emoji, 0, -14)
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'
+    ctx.shadowBlur  = 4
+    ctx.font = '18px Arial'
+    ctx.fillText(p.emoji, 0, -15)
 
-    // Nom (max 2 lignes)
+    // Ligne 1
     ctx.fillStyle = '#ffffff'
-    ctx.font      = 'bold 9px Arial'
-    ctx.shadowColor = 'rgba(0,0,0,0.8)'
-    ctx.shadowBlur  = 3
-    const words = p.name.split(' ')
-    if (words.length === 1) {
-      ctx.fillText(words[0], 0, 2)
-    } else if (words.length === 2) {
-      ctx.fillText(words[0], 0, -2)
-      ctx.fillText(words[1], 0, 9)
-    } else {
-      ctx.fillText(words.slice(0, 2).join(' '), 0, -2)
-      ctx.fillText(words.slice(2).join(' '),    0,  9)
-    }
+    ctx.font      = 'bold 9.5px Arial'
+    ctx.shadowBlur = 3
+    ctx.fillText(p.line1, 0, 0)
+
+    // Ligne 2
+    ctx.font = 'bold 9.5px Arial'
+    ctx.fillText(p.line2, 0, 11)
 
     ctx.restore()
   })
 
-  // Anneau doré intérieur
+  // Anneau doré
   ctx.beginPath()
   ctx.arc(CX, CY, R, 0, 2 * Math.PI)
-  ctx.strokeStyle = 'rgba(241,196,15,0.6)'
+  ctx.strokeStyle = 'rgba(255,215,0,0.7)'
   ctx.lineWidth   = 3
   ctx.stroke()
 
   // Centre
-  const cg = ctx.createRadialGradient(CX, CY, 0, CX, CY, 28)
-  cg.addColorStop(0, '#ffffff')
+  const cg = ctx.createRadialGradient(CX, CY, 0, CX, CY, 30)
+  cg.addColorStop(0, '#fff9e6')
   cg.addColorStop(1, '#f1c40f')
   ctx.beginPath()
-  ctx.arc(CX, CY, 28, 0, 2 * Math.PI)
+  ctx.arc(CX, CY, 30, 0, 2 * Math.PI)
   ctx.fillStyle = cg
   ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)'
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)'
   ctx.lineWidth   = 2
   ctx.stroke()
 
-  // Étoile au centre
-  ctx.font      = '20px Arial'
+  // Étoile centre
+  ctx.font      = '22px Arial'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText('⭐', CX, CY)
 }
 
-// ---- Animation vers un segment précis ----
+// ---- Animation ----
 function animateTo(prizeIndex, onDone) {
-  // Centre du segment en haut = -π/2
   const segCenter = prizeIndex * SEG + SEG / 2
   const target    = -Math.PI / 2 - segCenter
   const turns     = 6 * 2 * Math.PI
-  let   delta     = (target - rotation % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)
-  if (delta < 0.1) delta += 2 * Math.PI
+  let   delta     = ((target - rotation) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)
+  if (delta < 0.2) delta += 2 * Math.PI
   const finalRot  = rotation + turns + delta
-
-  const duration  = 4000 + Math.random() * 800
+  const duration  = 4200 + Math.random() * 600
   const startTime = performance.now()
   const startRot  = rotation
 
   function ease(t) { return 1 - Math.pow(1 - t, 4) }
 
   function step(now) {
-    const t = Math.min((now - startTime) / duration, 1)
+    const t  = Math.min((now - startTime) / duration, 1)
     rotation = startRot + (finalRot - startRot) * ease(t)
     drawWheel(rotation)
     if (t < 1) requestAnimationFrame(step)
@@ -165,8 +164,8 @@ const loaderEl  = document.getElementById('loader')
 
 function setSpinCount(n) {
   spinLabel.textContent = n
-  spinBtn.disabled = false
-  spinBtn.textContent = n > 0
+  spinBtn.disabled      = false
+  spinBtn.textContent   = n > 0
     ? `🎡 Tourner  (${n} tour${n > 1 ? 's' : ''} dispo)`
     : '🎡 Tourner — 500 ⭐'
 }
@@ -200,9 +199,9 @@ async function doSpin() {
 
   try {
     const r = await fetch('/api/spin', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body:    JSON.stringify({
         user_id:    user.id,
         username:   user.username   || '',
         first_name: user.first_name || 'User',
