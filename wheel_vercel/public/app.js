@@ -6,122 +6,148 @@ const tg = window.Telegram.WebApp
 tg.ready()
 tg.expand()
 
-// ---- Prizes (must match server order exactly) ----
+// ---- Prizes — visuellement égaux, proba côté serveur ----
 const PRIZES = [
-  { id: 'lose',             label: '😔',  name: 'Perdu',              color: '#c0392b', weight: 30 },
-  { id: 'free_spin',        label: '🎡',  name: 'Tour Gratuit',        color: '#2471a3', weight: 20 },
-  { id: 'lingerie',         label: '👙',  name: 'Lingerie',            color: '#c0187a', weight: 25 },
-  { id: 'lingerie_topless', label: '🔥',  name: 'Lingerie+Topless',    color: '#d35400', weight: 20 },
-  { id: 'full_pack',        label: '💎',  name: 'Pack Complet',        color: '#7d3c98', weight:  3 },
-  { id: 'solo_video',       label: '🎬',  name: 'Vidéo Solo',          color: '#117a65', weight:  2 },
+  { id: 'lose',             emoji: '😔', name: 'Perdu',             color: '#c0392b', dark: '#922b21' },
+  { id: 'lingerie',         emoji: '👙', name: 'Lingerie',           color: '#c0187a', dark: '#96125f' },
+  { id: 'free_spin',        emoji: '🎡', name: 'Tour Gratuit',       color: '#2471a3', dark: '#1a5276' },
+  { id: 'lingerie_topless', emoji: '🔥', name: 'Lingerie+Topless',   color: '#d35400', dark: '#a04000' },
+  { id: 'full_pack',        emoji: '💎', name: 'Pack Complet',       color: '#7d3c98', dark: '#6c3483' },
+  { id: 'solo_video',       emoji: '🎬', name: 'Vidéo Solo',         color: '#117a65', dark: '#0e6655' },
 ]
 
-const TOTAL = PRIZES.reduce((s, p) => s + p.weight, 0)
-
-// Pre-compute segment angles
-let cumAngle = -Math.PI / 2  // start at top
-const SEGMENTS = PRIZES.map(p => {
-  const sweep = (p.weight / TOTAL) * 2 * Math.PI
-  const seg = { ...p, startAngle: cumAngle, sweep }
-  cumAngle += sweep
-  return seg
-})
+// Segments égaux visuellement
+const N = PRIZES.length
+const SEG = (2 * Math.PI) / N   // 60° chacun
 
 // ---- Canvas ----
-const canvas  = document.getElementById('wheelCanvas')
-const ctx     = canvas.getContext('2d')
-const CX      = canvas.width  / 2
-const CY      = canvas.height / 2
-const R       = canvas.width  / 2 - 6
+const canvas = document.getElementById('wheelCanvas')
+const ctx    = canvas.getContext('2d')
+const SIZE   = canvas.width
+const CX     = SIZE / 2
+const CY     = SIZE / 2
+const R      = SIZE / 2 - 8
+const R_TEXT = R * 0.72
 
-let rotation  = 0
-let spinning  = false
-let spinCount = 0
+let rotation = -Math.PI / 2 - SEG / 2  // premier segment centré en haut
+let spinning = false
 
 // ---- Draw ----
-function drawWheel (rot) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
+function drawWheel(rot) {
+  ctx.clearRect(0, 0, SIZE, SIZE)
 
-  // Gold border
+  // Ombre externe
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.5)'
+  ctx.shadowBlur  = 20
   ctx.beginPath()
-  ctx.arc(CX, CY, R + 5, 0, 2 * Math.PI)
+  ctx.arc(CX, CY, R + 6, 0, 2 * Math.PI)
   ctx.fillStyle = '#f1c40f'
   ctx.fill()
+  ctx.restore()
 
-  SEGMENTS.forEach(seg => {
-    const a0 = seg.startAngle + rot
-    const a1 = a0 + seg.sweep
+  // Segments
+  PRIZES.forEach((p, i) => {
+    const a0 = rot + i * SEG
+    const a1 = a0 + SEG
 
-    // Segment fill
+    // Segment principal
     ctx.beginPath()
     ctx.moveTo(CX, CY)
     ctx.arc(CX, CY, R, a0, a1)
     ctx.closePath()
-    ctx.fillStyle = seg.color
+
+    // Dégradé radial
+    const grad = ctx.createRadialGradient(CX, CY, R * 0.2, CX, CY, R)
+    grad.addColorStop(0, p.color)
+    grad.addColorStop(1, p.dark)
+    ctx.fillStyle = grad
     ctx.fill()
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)'
-    ctx.lineWidth = 1.5
+
+    // Séparateur
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)'
+    ctx.lineWidth   = 2
     ctx.stroke()
 
-    // Label (emoji + short text)
-    const mid    = a0 + seg.sweep / 2
-    const textR  = R * 0.68
-    const tx     = CX + textR * Math.cos(mid)
-    const ty     = CY + textR * Math.sin(mid)
+    // Texte & emoji
+    const mid = rot + i * SEG + SEG / 2
+    const ex  = CX + R_TEXT * Math.cos(mid)
+    const ey  = CY + R_TEXT * Math.sin(mid)
 
     ctx.save()
-    ctx.translate(tx, ty)
+    ctx.translate(ex, ey)
     ctx.rotate(mid + Math.PI / 2)
-    ctx.textAlign = 'center'
-    ctx.fillStyle = '#ffffff'
+    ctx.textAlign    = 'center'
+    ctx.textBaseline = 'middle'
 
     // Emoji
-    ctx.font = `${seg.sweep > 0.8 ? 18 : 14}px Arial`
-    ctx.fillText(seg.label, 0, -12)
+    ctx.font = '20px Arial'
+    ctx.fillText(p.emoji, 0, -14)
 
-    // Text (only if segment large enough)
-    if (seg.sweep > 0.35) {
-      ctx.font = `bold ${seg.sweep > 0.8 ? 9 : 8}px Arial`
-      const words = seg.name.split('+')
-      words.forEach((w, i) => ctx.fillText(w.trim(), 0, i * 10))
+    // Nom (max 2 lignes)
+    ctx.fillStyle = '#ffffff'
+    ctx.font      = 'bold 9px Arial'
+    ctx.shadowColor = 'rgba(0,0,0,0.8)'
+    ctx.shadowBlur  = 3
+    const words = p.name.split(' ')
+    if (words.length === 1) {
+      ctx.fillText(words[0], 0, 2)
+    } else if (words.length === 2) {
+      ctx.fillText(words[0], 0, -2)
+      ctx.fillText(words[1], 0, 9)
+    } else {
+      ctx.fillText(words.slice(0, 2).join(' '), 0, -2)
+      ctx.fillText(words.slice(2).join(' '),    0,  9)
     }
 
     ctx.restore()
   })
 
-  // Centre circle
+  // Anneau doré intérieur
   ctx.beginPath()
-  ctx.arc(CX, CY, 22, 0, 2 * Math.PI)
-  ctx.fillStyle = '#ffffff'
-  ctx.fill()
+  ctx.arc(CX, CY, R, 0, 2 * Math.PI)
+  ctx.strokeStyle = 'rgba(241,196,15,0.6)'
+  ctx.lineWidth   = 3
+  ctx.stroke()
 
+  // Centre
+  const cg = ctx.createRadialGradient(CX, CY, 0, CX, CY, 28)
+  cg.addColorStop(0, '#ffffff')
+  cg.addColorStop(1, '#f1c40f')
   ctx.beginPath()
-  ctx.arc(CX, CY, 18, 0, 2 * Math.PI)
-  ctx.fillStyle = '#f1c40f'
+  ctx.arc(CX, CY, 28, 0, 2 * Math.PI)
+  ctx.fillStyle = cg
   ctx.fill()
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)'
+  ctx.lineWidth   = 2
+  ctx.stroke()
+
+  // Étoile au centre
+  ctx.font      = '20px Arial'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('⭐', CX, CY)
 }
 
-// ---- Spin animation ----
-function animateTo (prizeIndex, onDone) {
-  const seg    = SEGMENTS[prizeIndex]
-  // angle where prize center sits (without rotation)
-  const prizeCenter = seg.startAngle + seg.sweep / 2
-  // we want prizeCenter + rot = -π/2 (top)
-  // rot = -π/2 - prizeCenter
-  const rawTarget   = -Math.PI / 2 - prizeCenter
-  // ensure we spin at least 6 full turns forward
-  const extraTurns  = Math.ceil((6 * Math.PI * 2 - (rawTarget - rotation)) / (2 * Math.PI))
-  const finalRot    = rawTarget + extraTurns * 2 * Math.PI
+// ---- Animation vers un segment précis ----
+function animateTo(prizeIndex, onDone) {
+  // Centre du segment en haut = -π/2
+  const segCenter = prizeIndex * SEG + SEG / 2
+  const target    = -Math.PI / 2 - segCenter
+  const turns     = 6 * 2 * Math.PI
+  let   delta     = (target - rotation % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)
+  if (delta < 0.1) delta += 2 * Math.PI
+  const finalRot  = rotation + turns + delta
 
-  const duration  = 4500
+  const duration  = 4000 + Math.random() * 800
   const startTime = performance.now()
   const startRot  = rotation
 
-  function easeOut (t) { return 1 - Math.pow(1 - t, 4) }
+  function ease(t) { return 1 - Math.pow(1 - t, 4) }
 
-  function step (now) {
+  function step(now) {
     const t = Math.min((now - startTime) / duration, 1)
-    rotation = startRot + (finalRot - startRot) * easeOut(t)
+    rotation = startRot + (finalRot - startRot) * ease(t)
     drawWheel(rotation)
     if (t < 1) requestAnimationFrame(step)
     else { rotation = finalRot; spinning = false; onDone() }
@@ -131,14 +157,13 @@ function animateTo (prizeIndex, onDone) {
   requestAnimationFrame(step)
 }
 
-// ---- UI helpers ----
-const spinBtn    = document.getElementById('btnSpin')
-const resultBox  = document.getElementById('resultBox')
-const spinLabel  = document.getElementById('spinCount')
-const loaderEl   = document.getElementById('loader')
+// ---- UI ----
+const spinBtn   = document.getElementById('btnSpin')
+const resultBox = document.getElementById('resultBox')
+const spinLabel = document.getElementById('spinCount')
+const loaderEl  = document.getElementById('loader')
 
-function setSpinCount (n) {
-  spinCount = n
+function setSpinCount(n) {
   spinLabel.textContent = n
   spinBtn.disabled = false
   spinBtn.textContent = n > 0
@@ -146,20 +171,20 @@ function setSpinCount (n) {
     : '🎡 Tourner — 500 ⭐'
 }
 
-function showResult (prize, desc) {
+function showResult(prize, desc) {
+  const p = PRIZES.find(x => x.id === prize.id)
   resultBox.className = 'result-box show' + (prize.is_win ? ' win' : '')
   resultBox.innerHTML = `
-    <span class="emoji">${PRIZES.find(p => p.id === prize.id)?.label || '🎰'}</span>
+    <span class="emoji">${p ? p.emoji : '🎰'}</span>
     <div class="title">${prize.name}</div>
     <div class="desc">${desc}</div>
   `
-  resultBox.scrollIntoView({ behavior: 'smooth' })
 }
 
-// ---- API calls ----
+// ---- API ----
 const user = tg.initDataUnsafe?.user || {}
 
-async function fetchBalance () {
+async function fetchBalance() {
   try {
     const r = await fetch(`/api/balance?user_id=${user.id}`)
     const d = await r.json()
@@ -167,11 +192,11 @@ async function fetchBalance () {
   } catch { setSpinCount(0) }
 }
 
-async function doSpin () {
+async function doSpin() {
   if (spinning) return
+  resultBox.className = 'result-box'
   loaderEl.classList.add('show')
   spinBtn.disabled = true
-  resultBox.className = 'result-box'
 
   try {
     const r = await fetch('/api/spin', {
@@ -186,46 +211,39 @@ async function doSpin () {
     const d = await r.json()
     loaderEl.classList.remove('show')
 
-    if (d.error) {
-      // No spins → buy flow
-      buySpins('spin_1')
-      spinBtn.disabled = false
-      return
-    }
+    if (d.error) { buySpins('spin_1'); spinBtn.disabled = false; return }
 
     animateTo(d.prize.index, () => {
       setSpinCount(d.spins_left)
       const desc = d.prize.is_win
-        ? `✨ ${d.prize.description}\n\n📩 L'admin te contactera dès qu'il sera en ligne !`
+        ? `✨ ${d.prize.description}<br><br>📩 L'admin te contactera dès qu'il sera en ligne !`
         : d.prize.is_free_spin
           ? '✅ 1 tour gratuit ajouté à ton solde !'
-          : 'Pas de chance… Retente ta chance !'
+          : '😔 Pas de chance… Retente ta chance !'
       showResult(d.prize, desc)
     })
-  } catch (e) {
+  } catch {
     loaderEl.classList.remove('show')
     spinBtn.disabled = false
     alert('Erreur réseau, réessaie.')
   }
 }
 
-async function buySpins (type) {
+async function buySpins(type) {
   try {
     const r = await fetch(`/api/invoice?type=${type}`)
     const d = await r.json()
-    if (!d.url) { alert('Erreur lors de la création du paiement.'); return }
-
-    tg.openInvoice(d.url, async (status) => {
+    if (!d.url) { alert('Erreur paiement.'); return }
+    tg.openInvoice(d.url, async status => {
       if (status === 'paid') {
-        // Wait a moment for bot to process payment then refresh balance
         await new Promise(res => setTimeout(res, 2000))
         await fetchBalance()
         tg.showAlert('✅ Paiement confirmé ! Tes tours ont été ajoutés.')
       }
     })
-  } catch { alert('Erreur réseau, réessaie.') }
+  } catch { alert('Erreur réseau.') }
 }
 
 // ---- Init ----
-drawWheel(0)
+drawWheel(rotation)
 fetchBalance()
