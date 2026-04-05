@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🎰 Roue de la Fortune</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+
+    <h1>🎰 Roue de la Fortune</h1>
+
+    <!-- Wheel -->
+    <div class="wheel-wrapper">
+      <canvas id="wheelCanvas" width="300" height="300"></canvas>
+    </div>
+
+    <!-- Spin balance -->
+    <div class="balance-box">
+      Tours disponibles : <strong id="spinCount">…</strong>
+    </div>
+
+    <!-- Result -->
+    <div id="resultBox" class="result-box"></div>
+
+    <!-- Loader -->
+    <div id="loader" class="loader">⏳ La roue tourne…</div>
+
+    <!-- Buttons -->
+    <div class="buttons">
+      <button id="btnSpin" class="btn-spin" onclick="doSpin()">
+        🎡 Tourner — 500 ⭐
+      </button>
+
+      <div class="buy-row">
+        <button class="btn-buy" onclick="buySpins('spin_10')">
+          🛒 10 tours
+          <small>4 500 ⭐ (-10%)</small>
+        </button>
+        <button class="btn-buy" onclick="buySpins('spin_30')">
+          🛒 30 tours
+          <small>11 500 ⭐ (-23%)</small>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
